@@ -7,11 +7,13 @@
 
 import SwiftUI
 import PhotosUI
+import CoreLocation
 
 struct ContentView: View {
     @State private var image: Image?
     @State private var users = [Users]()
     @State private var addNewSelected = false
+    let location = LocationFetcher()
     var body: some View {
         NavigationStack {
             VStack {
@@ -34,7 +36,6 @@ struct ContentView: View {
                         }
                     }
                 }
-                
             }
             .navigationTitle("My Connections")
             .toolbar {
@@ -43,11 +44,17 @@ struct ContentView: View {
                         addNewSelected = true
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
+                }
             }
-            .sheet(isPresented: $addNewSelected) {
-                AddNewView(users: $users)
+            .sheet(isPresented: $addNewSelected, onDismiss: loadData) {
+                AddNewView(users: $users, location: location)
             }
             .onAppear(perform: loadData)
+            .onAppear {
+                location.start()
+            }
         }
     }
     func loadData() {
@@ -55,14 +62,30 @@ struct ContentView: View {
         do {
             let data = try Data(contentsOf: savedURL)
             users = try JSONDecoder().decode([Users].self, from: data)
-            print("loaded data successfully")
-        }catch {
-            print("data load unsuccessful")
+        } catch {
+            print("Failed to load users: \(error.localizedDescription)")
         }
     }
+
+
 }
-
-
+class LocationFetcher: NSObject, CLLocationManagerDelegate {
+    let manager = CLLocationManager()
+    var lastKnownLocation: CLLocationCoordinate2D?
+    
+    override init() {
+        super.init()
+        manager.delegate = self
+    }
+    func start() {
+        manager.requestWhenInUseAuthorization()
+        manager.startUpdatingLocation()
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations location: [CLLocation]) {
+        lastKnownLocation = location.first?.coordinate
+    }
+}
 #Preview {
     ContentView()
 }

@@ -5,12 +5,12 @@
 //  Created by DEEPAK BEHERA on 11/07/25.
 //
 import SwiftUI
-
-import SwiftUI
+import CoreLocation
 
 struct Users: Identifiable, Codable {
     var id: UUID = UUID()
     var name: String
+    var coordinate: Coordinates?
     var imageData: Data?
 
     var image: Image? {
@@ -26,3 +26,7 @@ struct Users: Identifiable, Codable {
     }
 }
 
+struct Coordinates: Codable {
+    var longitude: Double
+    var latitude: Double
+}

@@ -13,10 +13,10 @@ struct AddNewView: View {
     @State private var imageData: Data?
     @State private var selected = false
     @State private var name: String = ""
-
+    @State private var nameSaved = false
     @Binding var users: [Users]
     @Environment(\.dismiss) var dismiss
-
+    let location: LocationFetcher
     var body: some View {
         NavigationStack {
             VStack {
@@ -36,8 +36,12 @@ struct AddNewView: View {
             .alert("Add name", isPresented: $selected) {
                 TextField("Add name of the connection", text: $name)
                 Button("OK") {
-                    saveData()
-                    dismiss()
+                    nameSaved = true
+                }
+            }
+            .confirmationDialog("Location access", isPresented: $nameSaved) {
+                Button("Add location") {
+                    saveDataWithLocationRetry()
                 }
             }
         }
@@ -52,19 +56,35 @@ struct AddNewView: View {
         }
     }
     
-    func saveData() {
+    func saveDataWithLocationRetry(retries: Int = 5) {
+        if let location = location.lastKnownLocation {
+            let coordinates = Coordinates(longitude: location.longitude, latitude: location.latitude)
+            let newUser = Users(name: name, coordinate: coordinates, imageData: imageData)
+            users.append(newUser)
+            saveToDisk()
+            dismiss()
+        } else if retries > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                saveDataWithLocationRetry(retries: retries - 1)
+            }
+        } else {
+            let newUser = Users(name: name, coordinate: nil, imageData: imageData)
+            users.append(newUser)
+            saveToDisk()
+            dismiss()
+        }
+    }
+
+    func saveToDisk() {
         let savedURL = URL.documentsDirectory.appendingPathComponent("users.json")
-
-        let newUser = Users(name: name, imageData: imageData)
-        users.append(newUser)
-
         do {
             let encodedData = try JSONEncoder().encode(users)
             try encodedData.write(to: savedURL)
-            print("Users saved to disk.")
         } catch {
             print("Failed to save users: \(error.localizedDescription)")
         }
     }
+
+
 
 }
